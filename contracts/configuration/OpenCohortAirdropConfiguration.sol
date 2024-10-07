@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-interface OpenCohortAirdropConfiguration {
+import {GrantConfiguration} from "./GrantConfiguration.sol";
+
+interface OpenCohortAirdropConfiguration is GrantConfiguration {
     enum RewardType {
         None,
         Weight,

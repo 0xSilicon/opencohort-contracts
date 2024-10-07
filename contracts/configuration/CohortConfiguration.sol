@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-interface CohortConfiguration {
+import {GrantConfiguration} from "./GrantConfiguration.sol";
+
+interface CohortConfiguration is GrantConfiguration {
     enum CohortType {
         None,
         Address,
@@ -18,10 +20,5 @@ interface CohortConfiguration {
 
         // name, description
         string tokenURI;
-    }
-
-    struct CohortGrant {
-        uint256 rate;
-        address grantee;
     }
 }

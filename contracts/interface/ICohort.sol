@@ -10,10 +10,10 @@ interface ICohort is CohortConfiguration {
     function ownerOf(uint256) external view returns (address);
     function cohortType(uint256) external view returns (CohortType);
     function metadata(uint256) external view returns (CohortMetadata memory);
-    function grant(uint256) external view returns (CohortGrant memory);
+    function grant(uint256) external view returns (GrantConfig memory);
     function MAX_GRANT_RATE() external view returns (uint256);
     function GRANT_RATE_DENOMINATOR() external view returns (uint256);
     function mint(CohortMetadata calldata) external returns (uint256);
     function setTokenURI(uint256, string calldata) external;
-    function setCohortGrant(uint256, CohortGrant calldata) external;
+    function setCohortGrant(uint256, GrantConfig calldata) external;
 }

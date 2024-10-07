@@ -22,10 +22,12 @@ contract OpenCohortAirdropDeployer is Ownable, UUPSUpgradeable, IOpenCohortAirdr
 
     address public airdropImplementation;
 
+    address public identityRegistry;
+
     constructor() Ownable(address(0xdead)) { cohort = address(1); }
 
     function version() external pure returns (string memory) {
-        return "OpenCohortAirdropDeployer240819A";
+        return "OpenCohortAirdropDeployer241002";
     }
 
     function initialize(address owner_, address cohort_) external {
@@ -35,6 +37,13 @@ contract OpenCohortAirdropDeployer is Ownable, UUPSUpgradeable, IOpenCohortAirdr
         cohort = cohort_;
 
         airdropImplementation = address(new OpenCohortAirdrop());
+    }
+
+    event SetIdentityRegistry(address identityRegistry);
+    function setIdentityRegistry(address _identityRegistry) external onlyOwner {
+        require(_identityRegistry != address(0));
+        identityRegistry = _identityRegistry;
+        emit SetIdentityRegistry(_identityRegistry);
     }
 
     event SetAirdropImplementation(address airdropImplementation);
@@ -62,7 +71,7 @@ contract OpenCohortAirdropDeployer is Ownable, UUPSUpgradeable, IOpenCohortAirdr
         address owner = msg.sender;
         address openCohortAirdrop = address(new ERC1967Proxy(
             airdropImplementation,
-            abi.encodeCall(OpenCohortAirdrop.initialize, (owner, cohort, openCohortAirdropConfig, cohortId, cohortTime))
+            abi.encodeCall(OpenCohortAirdrop.initialize, (owner, cohort, openCohortAirdropConfig, cohortId, cohortTime, identityRegistry))
         ));
         emit DeployOpenCohortAirdrop(owner, openCohortAirdrop, openCohortAirdropConfig, cohortId, cohortTime);
 

@@ -32,10 +32,10 @@ contract Cohort is ICohort, Ownable, UUPSUpgradeable, ERC165, IERC5192 {
     mapping(uint256 => mapping(uint256 => uint256)) public snapShotTime;
     mapping(uint256 => mapping(uint256 => CohortMetadata)) public snapShotMetadata;
 
-    mapping(uint256 => CohortGrant) private _grant;
+    mapping(uint256 => GrantConfig) private _grant;
 
     event SetCohortMetadata(uint256 tokenId, uint256 nonce, CohortMetadata metadata, uint256 snapShotTime);
-    event SetCohortGrant(uint256 tokenId, CohortGrant cohortGrant);
+    event SetCohortGrant(uint256 tokenId, GrantConfig cohortGrant);
     
     error BalanceQueryForZeroAddress();
     error OwnerIndexOutOfBounds();
@@ -61,7 +61,7 @@ contract Cohort is ICohort, Ownable, UUPSUpgradeable, ERC165, IERC5192 {
     }
 
     function version() external pure returns (string memory) {
-        return "Cohort240821";
+        return "Cohort240924";
     }
 
     //////////////////////////////////////////////////////////////////
@@ -146,7 +146,7 @@ contract Cohort is ICohort, Ownable, UUPSUpgradeable, ERC165, IERC5192 {
         return _metadata[tokenId].cohortType;
     }
 
-    function grant(uint256 tokenId) public view returns (CohortGrant memory) {
+    function grant(uint256 tokenId) public view returns (GrantConfig memory) {
         require(_exists(tokenId));
         return _grant[tokenId];
     }
@@ -311,9 +311,10 @@ contract Cohort is ICohort, Ownable, UUPSUpgradeable, ERC165, IERC5192 {
         emit MetadataUpdate(tokenId);
     }
 
-    function setCohortGrant(uint256 tokenId, CohortGrant calldata cohortGrant) external onlyAdmin(tokenId) {
+    function setCohortGrant(uint256 tokenId, GrantConfig calldata cohortGrant) external onlyAdmin(tokenId) {
         require(_exists(tokenId));
         require(cohortGrant.rate <= MAX_GRANT_RATE());
+        require(cohortGrant.grantee != address(0));
         _grant[tokenId] = cohortGrant;
 
         emit SetCohortGrant(tokenId, cohortGrant);

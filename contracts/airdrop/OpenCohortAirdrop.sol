@@ -17,6 +17,7 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
+import {IOpenIdentityRegistry} from "../interface/IOpenIdentityRegistry.sol";
 import {IOpenCohortAirdrop} from "../interface/IOpenCohortAirdrop.sol";
 import {ICohort} from "../interface/ICohort.sol";
 import {IERC5192} from "../interface/IERC5192.sol";
@@ -41,8 +42,12 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
 
     address private _cohort;
     CohortMetadata private _cohortMetadata;
-    CohortGrant private _cohortGrant;
+    GrantConfig private _cohortGrant;
     uint256 private _cohortGrantRateDenominator;
+
+    address private _identityRegistry;
+
+    GrantConfig private _helperGrant;
 
     OpenCohortAirdropConfig private _openCohortAirdropConfig;
     uint256 private _cohortId;
@@ -55,7 +60,7 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
         _disableInitializers();
     }
 
-    function initialize(address owner_, address cohort_, OpenCohortAirdropConfig memory openCohortAirdropConfig_, uint256 cohortId_, uint256 cohortTime_) public initializer {
+    function initialize(address owner_, address cohort_, OpenCohortAirdropConfig memory openCohortAirdropConfig_, uint256 cohortId_, uint256 cohortTime_, address identityRegistry_) public initializer {
         _transferOwnership(owner_);
 
         _cohort = cohort_;
@@ -63,12 +68,14 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
 
         if(cohortId_ != 0) _setCohortId(cohortId_);
         if(cohortTime_ != 0) _setCohortTime(cohortTime_);
+
+        _identityRegistry = identityRegistry_;
     }
 
     receive() external payable { revert(); }
 
     function version() external pure returns (string memory) {
-        return "OpenCohortAirdrop240819A";
+        return "OpenCohortAirdrop241002C";
     }
 
     //////////////////////////////////////////////////////////////////
@@ -195,12 +202,28 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
         return _cohortMetadata;
     }
 
-    function cohortGrant() public view returns (CohortGrant memory) {
+    function cohortGrant() public view returns (GrantConfig memory) {
         return _cohortGrant;
     }
 
     function cohortGrantRateDenominator() public view returns (uint256) {
         return _cohortGrantRateDenominator;
+    }
+
+    function identityRegistry() public view returns (address) {
+        return _identityRegistry;
+    }
+
+    function MAX_GRANT_RATE() public pure returns (uint256) {
+        return 0;
+    }
+
+    function GRANT_RATE_DENOMINATOR() public pure returns (uint256) {
+        return 10000;
+    }
+
+    function helperGrant() public view returns (GrantConfig memory) {
+        return _helperGrant;
     }
 
     function openCohortAirdropConfig() public view returns (OpenCohortAirdropConfig memory) {
@@ -227,7 +250,30 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
         return _cohortTime;
     }
 
-    event SetCohortId(uint256 cohortId, CohortGrant cohortGrant, uint256 cohortGrantRateDenominator);
+    event SetHelperGrant(GrantConfig helperGrant);
+    function setHelperGrant(GrantConfig memory grant) external onlyOwner {
+        require(block.timestamp < claimableTime());
+        require(grant.rate <= MAX_GRANT_RATE());
+        require(grant.grantee != address(0));
+        _helperGrant = grant;
+
+        emit SetHelperGrant(grant);
+    }
+
+    event SetSigner(address signer);
+    function setSigner(address signer_) external onlyOwner {
+        uint256 cohortId_ = cohortId();
+        if(cohortId_ != 0){
+            ICohort Cohort = ICohort(cohort());
+            if(Cohort.cohortType(cohortId_) == CohortType.Address) require(signer_ == address(0));
+            else require(signer_ != address(0));
+        }
+
+        _openCohortAirdropConfig.signer = signer_;
+        emit SetSigner(signer_);
+    }
+
+    event SetCohortId(uint256 cohortId, GrantConfig cohortGrant, uint256 cohortGrantRateDenominator);
     function setCohortId(uint256 cohortId_) external onlyOwner {
         _setCohortId(cohortId_);
     }
@@ -298,6 +344,8 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
         }
         else require(IERC1271(config.signer).isValidSignature(hash, signature) == IERC1271.isValidSignature.selector);
 
+        if(identityRegistry() != address(0)) require(!IOpenIdentityRegistry(identityRegistry()).isRevokedBeneficiary(config.signer, beneficiary));
+
         _claim(config, index, uniqueKey, weight, proof, beneficiary);
     }
 
@@ -332,15 +380,33 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
         require(amount != 0);
         _claimedAmount[uniqueKey] += amount;
 
-        CohortGrant memory grant = cohortGrant();
-        if(grant.rate != 0){
-            uint256 grantAmount = (amount * grant.rate) / cohortGrantRateDenominator();
-            IERC20(config.token).safeTransfer(grant.grantee, grantAmount);
-            amount = amount - grantAmount;
-        }
+        uint256 cohortGrantAmount = provideCohortGrant(config.token, amount);
+        uint256 helperGrantAmount = provideHelperGrant(config.token, amount);
+
+        amount = amount - (cohortGrantAmount + helperGrantAmount);
         IERC20(config.token).safeTransfer(beneficiary, amount);
 
         emit Claimed(index, uniqueKey, weight, amount, beneficiary);
+    }
+
+    function provideCohortGrant(address token, uint256 amount) internal returns (uint256) {
+        GrantConfig memory CohortGrant = cohortGrant();
+        if(CohortGrant.rate == 0) return 0;
+
+        uint256 cohortGrantAmount = (amount * CohortGrant.rate) / cohortGrantRateDenominator();
+        if(cohortGrantAmount != 0) IERC20(token).safeTransfer(CohortGrant.grantee, cohortGrantAmount);
+
+        return cohortGrantAmount;
+    }
+
+    function provideHelperGrant(address token, uint256 amount) internal returns (uint256) {
+        GrantConfig memory HelperGrant = helperGrant();
+        if(HelperGrant.rate == 0) return 0;
+
+        uint256 helperGrantAmount = (amount * HelperGrant.rate) / GRANT_RATE_DENOMINATOR();
+        if(helperGrantAmount != 0) IERC20(token).safeTransfer(HelperGrant.grantee, helperGrantAmount);
+
+        return helperGrantAmount;
     }
 
     function getChainId() public view returns (uint256 chainId) {
