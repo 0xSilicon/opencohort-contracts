@@ -75,7 +75,7 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
     receive() external payable { revert(); }
 
     function version() external pure returns (string memory) {
-        return "OpenCohortAirdrop241002C";
+        return "OpenCohortAirdrop241008";
     }
 
     //////////////////////////////////////////////////////////////////
@@ -389,22 +389,30 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
         emit Claimed(index, uniqueKey, weight, amount, beneficiary);
     }
 
+    event ProvideCohortGrant(address token, uint256 amount, address grantee);
     function provideCohortGrant(address token, uint256 amount) internal returns (uint256) {
         GrantConfig memory CohortGrant = cohortGrant();
         if(CohortGrant.rate == 0) return 0;
 
         uint256 cohortGrantAmount = (amount * CohortGrant.rate) / cohortGrantRateDenominator();
-        if(cohortGrantAmount != 0) IERC20(token).safeTransfer(CohortGrant.grantee, cohortGrantAmount);
+        if(cohortGrantAmount != 0){
+            IERC20(token).safeTransfer(CohortGrant.grantee, cohortGrantAmount);
+            emit ProvideCohortGrant(token, cohortGrantAmount, CohortGrant.grantee);
+        }
 
         return cohortGrantAmount;
     }
 
+    event ProvideHelperGrant(address token, uint256 amount, address grantee);
     function provideHelperGrant(address token, uint256 amount) internal returns (uint256) {
         GrantConfig memory HelperGrant = helperGrant();
         if(HelperGrant.rate == 0) return 0;
 
         uint256 helperGrantAmount = (amount * HelperGrant.rate) / GRANT_RATE_DENOMINATOR();
-        if(helperGrantAmount != 0) IERC20(token).safeTransfer(HelperGrant.grantee, helperGrantAmount);
+        if(helperGrantAmount != 0){
+            IERC20(token).safeTransfer(HelperGrant.grantee, helperGrantAmount);
+            emit ProvideHelperGrant(token, helperGrantAmount, HelperGrant.grantee);
+        }
 
         return helperGrantAmount;
     }
