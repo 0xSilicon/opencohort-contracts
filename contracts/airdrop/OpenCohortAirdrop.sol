@@ -75,7 +75,7 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
     receive() external payable { revert(); }
 
     function version() external pure returns (string memory) {
-        return "OpenCohortAirdrop241008";
+        return "OpenCohortAirdrop241008A";
     }
 
     //////////////////////////////////////////////////////////////////
@@ -380,13 +380,13 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
         require(amount != 0);
         _claimedAmount[uniqueKey] += amount;
 
+        emit Claimed(index, uniqueKey, weight, amount, beneficiary);
+
         uint256 cohortGrantAmount = provideCohortGrant(config.token, amount);
         uint256 helperGrantAmount = provideHelperGrant(config.token, amount);
 
         amount = amount - (cohortGrantAmount + helperGrantAmount);
         IERC20(config.token).safeTransfer(beneficiary, amount);
-
-        emit Claimed(index, uniqueKey, weight, amount, beneficiary);
     }
 
     event ProvideCohortGrant(address token, uint256 amount, address grantee);
