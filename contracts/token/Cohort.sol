@@ -61,7 +61,7 @@ contract Cohort is ICohort, Ownable, UUPSUpgradeable, ERC165, IERC5192 {
     }
 
     function version() external pure returns (string memory) {
-        return "Cohort240924";
+        return "Cohort241024";
     }
 
     //////////////////////////////////////////////////////////////////
@@ -152,7 +152,7 @@ contract Cohort is ICohort, Ownable, UUPSUpgradeable, ERC165, IERC5192 {
     }
 
     function MAX_GRANT_RATE() public pure returns (uint256) {
-        return 0;
+        return 1000;
     }
 
     function GRANT_RATE_DENOMINATOR() public pure returns (uint256) {

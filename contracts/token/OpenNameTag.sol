@@ -43,17 +43,17 @@ contract OpenNameTag is ERC165, IERC5192, IERC721Errors {
         MAX_PROPERTY_COUNT = maxPropertyCount;
     }
 
-    function initialize(string calldata chain) external {
+    function initialize() external {
         require(bytes(_name).length == 0);
-        _name = string(abi.encodePacked("Open ", chain, " Name Tag"));
-        _symbol = string(abi.encodePacked("M", bytes(chain)[:1], "NT"));
+        _name = string(abi.encodePacked("Open Name Tag"));
+        _symbol = string(abi.encodePacked("TAG"));
         _tokens.push(address(0));
     }
 
     receive() external payable { revert(); }
 
     function version() external pure returns (string memory) {
-        return "OpenNameTag240726";
+        return "OpenNameTag241024";
     }
 
     //////////////////////////////////////////////////////////////////

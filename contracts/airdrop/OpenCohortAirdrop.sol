@@ -28,6 +28,7 @@ error AlreadyClaimed();
 error InvalidProof();
 
 contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165, IERC5192, IERC721Errors {
+    using Strings for address;
     using Strings for uint256;
     using SafeERC20 for IERC20;
 
@@ -75,7 +76,7 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
     receive() external payable { revert(); }
 
     function version() external pure returns (string memory) {
-        return "OpenCohortAirdrop241008A";
+        return "OpenCohortAirdrop241024";
     }
 
     //////////////////////////////////////////////////////////////////
@@ -122,12 +123,12 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
 
     function name() public view virtual returns (string memory) {
         if(bytes(openCohortAirdropConfig().name).length == 0)
-            return string(abi.encodePacked("OpenCohort: ", IERC20Metadata(openCohortAirdropConfig().token).name()));
-        return string(abi.encodePacked("OpenCohort: ", openCohortAirdropConfig().name));
+            return string(abi.encodePacked("Acivement: ", address(this).toHexString()));
+        return string(abi.encodePacked("Acivement: ", openCohortAirdropConfig().name));
     }
 
     function symbol() public view virtual returns (string memory) {
-        return "OCA";
+        return string(abi.encodePacked("achv", IERC20Metadata(openCohortAirdropConfig().token).name()));
     }
 
     function baseURI() public view virtual returns (string memory) {
@@ -215,7 +216,7 @@ contract OpenCohortAirdrop is IOpenCohortAirdrop, Ownable, Initializable, ERC165
     }
 
     function MAX_GRANT_RATE() public pure returns (uint256) {
-        return 0;
+        return 1000;
     }
 
     function GRANT_RATE_DENOMINATOR() public pure returns (uint256) {
