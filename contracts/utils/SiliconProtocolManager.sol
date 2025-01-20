@@ -12,8 +12,11 @@ import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/Messa
 import {ICohortManager} from "../interface/ICohortManager.sol";
 import {ICohort} from "../interface/ICohort.sol";
 import {IOpenNameTag} from "../interface/IOpenNameTag.sol";
+import {IWalletFactory} from "../interface/IWalletFactory.sol";
+import {INamedWallet} from "../interface/INamedWallet.sol";
+import {WalletInfo} from "../namedWallet/NamedWallet.sol";
 
-contract CohortManager is ICohortManager, Ownable, Initializable, UUPSUpgradeable {
+contract SiliconProtocolManager is ICohortManager, Ownable, Initializable, UUPSUpgradeable {
     address private _cohort;
     address private _openNameTag;
 
@@ -23,19 +26,23 @@ contract CohortManager is ICohortManager, Ownable, Initializable, UUPSUpgradeabl
     uint256 private _cohortCount;
     mapping(uint256 => uint256) private _ownedCohorts;
 
+    address private _walletFactory;
+    address[] private _walletList;
+
     constructor() Ownable(address(0xdead)) {
         _disableInitializers();
     }
 
     function version() external pure returns (string memory) {
-        return "CohortManager241024";
+        return "SiliconProtocolManager250115";
     }
 
-    function initialize(address owner_, address cohort_, address openNameTag_) public initializer {
+    function initialize(address owner_, address cohort_, address openNameTag_, address walletFactory_) public reinitializer(2) {
         _transferOwnership(owner_);
 
         _cohort = cohort_;
         _openNameTag = openNameTag_;
+        _walletFactory = walletFactory_;
     }
 
     function isValidSignature(bytes32 hash, bytes memory signature) external view returns (bytes4 magicValue) {
@@ -44,6 +51,10 @@ contract CohortManager is ICohortManager, Ownable, Initializable, UUPSUpgradeabl
         if(isValidSigner(signer) || signer == owner()) return IERC1271.isValidSignature.selector;
 
         return 0xffffffff;
+    }
+
+    function walletFactory() public view returns (address) {
+        return _walletFactory;
     }
 
     function cohort() public view returns (address) {
@@ -56,6 +67,14 @@ contract CohortManager is ICohortManager, Ownable, Initializable, UUPSUpgradeabl
 
     function signerCount() public view returns (uint256) {
         return _signerCount;
+    }
+
+    function getWalletListLength() public view returns (uint256) {
+        return _walletList.length;
+    }
+
+    function getWalletByIndex(uint256 idx) public view returns (address) {
+        return _walletList[idx];
     }
 
     function isValidSigner(address signer) public view returns (bool) {
@@ -105,6 +124,45 @@ contract CohortManager is ICohortManager, Ownable, Initializable, UUPSUpgradeabl
 
         emit MintCohort(index, cohortId, cohortMetadata);
         return (index, cohortId);
+    }
+
+    function deployWallet(address virtualAddress, WalletInfo memory walletInfo, string[] calldata keys, string[] calldata values) external onlyOwner returns (address) {
+        address wallet = IWalletFactory(_walletFactory).deployWallet(virtualAddress, walletInfo, keys, values);
+        _walletList.push(virtualAddress);
+        return wallet;
+    }
+
+    function activateWallet(address virtualAddress, address owner, bytes calldata signature) external onlyOwner {
+        IWalletFactory(_walletFactory).activateWallet(address(this), virtualAddress, owner, signature);
+    }
+
+    function getWalletAddress(address virtualAddress) public view returns (address) {
+        return IWalletFactory(_walletFactory).computeAddress(address(this), virtualAddress);
+    }
+
+    function changeWalletTaxRate(address virtualAddress, uint256 rate) external onlyOwner{
+        address payable wallet = payable(getWalletAddress(virtualAddress));
+        INamedWallet(wallet).changeTaxRate(rate);
+    }
+
+    function changeWalletInfo(address virtualAddress, string calldata name, string calldata image, string calldata description) external onlyOwner {
+        address payable wallet = payable(getWalletAddress(virtualAddress));
+        INamedWallet(wallet).changeInfo(name, image, description);
+    }
+
+    function addWalletProperty(address virtualAddress, string[] calldata keys, string[] calldata values) external onlyOwner {
+        address payable wallet = payable(getWalletAddress(virtualAddress));
+        INamedWallet(wallet).addPropertyBatch(keys, values);
+    }
+
+    function removeWalletProperty(address virtualAddress, string calldata key) external onlyOwner {
+        address payable wallet = payable(getWalletAddress(virtualAddress));
+        INamedWallet(wallet).removeProperty(key);
+    }
+
+    function upgradeWalletImplementation(address virtualAddress, address newImplementation, bytes memory data, bytes calldata signature) public {
+        address payable wallet = payable(getWalletAddress(virtualAddress));
+        INamedWallet(wallet).upgradeImplementation(newImplementation, data, signature);
     }
 
     function setCohortGrant(uint256 tokenId, GrantConfig calldata cohortGrant) external onlyOwner {
