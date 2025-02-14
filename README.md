@@ -10,6 +10,12 @@ Visit the OpenCohort documentation.
 
 - [Developer Documentation](https://docs.silicon.network/about/opencohort/build-on-opencohort/developer)
 
+## Execute
+
+Visit the play-opencohort.
+
+- [play-opencohort](https://github.com/0xSilicon/play-opencohort)
+
 ## Silicon mainnet contract Addresses
 
 ```
@@ -30,9 +36,9 @@ Visit the OpenCohort documentation.
           "address": "0x098E0Ed42E83529EbCc23594DCCCDf9B88482c99",
           "version": "OpenIdentityRegistry241002"
      },
-     "CohortManagerDeployer": {
+     "SiliconProtocolManagerDeployer": {
           "address": "0xFa4d82D765725d54c01dDe13277e43EF9606a28c",
-          "version": "CohortManagerDeployer241024"
+          "version": "SiliconProtocolManagerDeployer250109"
      }
 }
 ```
