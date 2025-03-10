@@ -34,7 +34,7 @@ contract SiliconProtocolManager is ICohortManager, Ownable, Initializable, UUPSU
     }
 
     function version() external pure returns (string memory) {
-        return "SiliconProtocolManager250115";
+        return "SiliconProtocolManager250310";
     }
 
     function initialize(address owner_, address cohort_, address openNameTag_, address walletFactory_) public reinitializer(2) {
@@ -91,6 +91,10 @@ contract SiliconProtocolManager is ICohortManager, Ownable, Initializable, UUPSU
 
     function mintNameTag(IOpenNameTag.NameTagMetadata calldata nameTagMetadata, string[] calldata keys, string[] calldata values) external onlyOwner {
         IOpenNameTag(openNameTag()).mint(nameTagMetadata, keys, values);
+    }
+
+    function setNameTagMetadata(IOpenNameTag.NameTagMetadata calldata nameTagMetadata) external onlyOwner {
+        IOpenNameTag(openNameTag()).setNameTagMetadata(nameTagMetadata);
     }
 
     function addPropertyBatch(string[] calldata keys, string[] calldata values) external onlyOwner {
